@@ -1,46 +1,27 @@
 import "dotenv/config";
 import cors from "cors";
 import express from "express";
-import { format } from "date-fns";
 
 import { ExpressApp, HttpServer } from "./config/index.js";
-import { InitializeSocketIOServer } from "./controllers/ws.controllers.js";
+import { WSController } from "./controllers/ws/index.js";
+
+import { requestLogger } from "./middleware/logger.js";
+import { healthRouter, indexRouter } from "./routes/index.js";
 
 const app = ExpressApp;
 
 app.use(cors({ origin: "*" }));
 app.use(express.json());
 app.use(express.static("dist/public"));
+app.use(requestLogger);
 
-app.use((req, res, next) => {
-  let timer = Date.now();
-  res.on("finish", () => {
-    const timestamp = format(new Date(), "yyyy-MM-dd HH:mm:ss");
-    const duration = Date.now() - timer;
+app.use("/", indexRouter);
+app.use("/health", healthRouter);
 
-    console.log(
-      `<${timestamp}> - ${req.method} - ${req.url} - ${res.statusCode} - ${duration}ms`
-    );
-  });
-  next();
-});
-
-app.get("/", (_, res) => {
-  res.sendFile("index.html", { root: "dist/public" });
-});
-
-app.get("/health", (_, res) => {
-  res.status(200).json({ message: "OK" });
-});
-app.get("/api/health", (_, res) => {
-  res.status(200).json({ message: "OK" });
-});
-
-const PORT = process.env.PORT || 7500;
-const BASE_URL = process.env.BASE_URL || "http://localhost";
+const PORT = process.env.PORT;
+const BASE_URL = process.env.BASE_URL!;
 
 HttpServer.listen(PORT, () => {
   console.log(`Listening on port ${BASE_URL}:${PORT}`);
-
-  InitializeSocketIOServer.initialize(HttpServer);
+  new WSController(HttpServer);
 });

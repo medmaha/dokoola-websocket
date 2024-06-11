@@ -1,6 +1,9 @@
 import { Server } from "socket.io";
-import { loggerSocketRequest, UserDatabase, WSAuthController, WSCallController, WSRoomController, } from ".";
-/** A cache of connected users */
+import AuthController from "./auth.controller.js";
+import CallController from "./call.controller.js";
+import RoomController from "./room.controller.js";
+import { loggerSocketRequest } from "./utilities/helpers.js";
+import UserDatabase from "./utilities/db.js";
 var WSController = /** @class */ (function () {
     function WSController(httpServer) {
         var io = new Server(httpServer, {
@@ -17,13 +20,13 @@ var WSController = /** @class */ (function () {
         this.initialize(io);
     }
     WSController.prototype.initialize = function (io) {
-        WSAuthController.io = io;
-        WSCallController.io = io;
-        WSRoomController.io = io;
+        AuthController.io = io;
+        CallController.io = io;
+        RoomController.io = io;
         io.on("connection", function (socket) {
-            WSAuthController.init(socket);
-            WSCallController.init(socket);
-            WSRoomController.init(socket);
+            AuthController.init(socket);
+            CallController.init(socket);
+            RoomController.init(socket);
             if (socket.recovered) {
                 // recovery was successful: socket.id, socket.rooms and socket.data were restored
                 loggerSocketRequest(socket.id, "/ws", "recover");
@@ -51,4 +54,4 @@ var WSController = /** @class */ (function () {
     };
     return WSController;
 }());
-export default WSController;
+export { WSController };
