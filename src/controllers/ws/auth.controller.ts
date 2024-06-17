@@ -16,19 +16,19 @@ export default class AuthController {
   }
 
   // User logging in
-  public static login(user: SocketUser, socket: Socket) {
+  public static async login(user: SocketUser, socket: Socket) {
     loggerSocketRequest(socket.id, "/ws/login", "auth");
-    UserDatabase.set(user.username, {
+    socket.data = { user: user };
+    socket.emit("logged-in", user);
+    await UserDatabase.set(user.username, {
       ...user,
       socketId: socket.id,
     });
-    socket.data = { user: user };
-    socket.emit("logged-in", user);
   }
   // User logging out
-  public static logout(user: SocketUser, socket: Socket) {
+  public static async logout(user: SocketUser, socket: Socket) {
     loggerSocketRequest(socket.id, "/ws/logout", "auth");
-    UserDatabase.delete(user.username);
     socket.emit("logged-out", user);
+    await UserDatabase.delete(user.username);
   }
 }

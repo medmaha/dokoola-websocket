@@ -18,11 +18,11 @@ export default class CallController {
     );
   }
 
-  public static request(data: CallRequest, socket: Socket) {
+  public static async request(data: CallRequest, socket: Socket) {
     loggerSocketRequest(socket.id, "/ws/request-call", "call");
 
     // Find the remote user from the connected users list in the database
-    const remoteUser = UserDatabase.get(data.remoteUser?.username);
+    const remoteUser = await UserDatabase.get(data.remoteUser?.username);
     if (!remoteUser)
       return socket.emit(
         "call-not-found",
@@ -55,15 +55,15 @@ export default class CallController {
   }
 
   // User receives the emitted incoming-call event
-  public static accept(data: OutGoingCall, socket: Socket) {
+  public static async accept(data: OutGoingCall, socket: Socket) {
     loggerSocketRequest(socket.id, "/ws/call-received", "call");
 
     // find the remote user
-    const remoteUser = UserDatabase.get(data.remoteUser?.username);
+    const remoteUser = await UserDatabase.get(data.remoteUser?.username);
     if (!remoteUser) return socket.emit("call-not-connected", data);
 
     // find the local user
-    const localUser = UserDatabase.get(data.localUser?.username);
+    const localUser = await UserDatabase.get(data.localUser?.username);
     if (!localUser) return socket.emit("call-not-connected", data);
 
     // find the local user socket
