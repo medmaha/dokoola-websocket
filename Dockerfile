@@ -1,5 +1,4 @@
 FROM node:alpine AS base
-
 WORKDIR /app
 COPY package.json ./
 
@@ -13,7 +12,6 @@ RUN yarn install --prod
 
 # Builder 
 FROM base as builder
-
 COPY --from=dev-deps /app/node_modules ./node_modules
 COPY src ./src
 COPY tsconfig.json ./
@@ -21,6 +19,8 @@ RUN yarn build
 
 # Final Image
 FROM base as final
-
-COPY --from=prod-deps /app/node_modules ./node_modules
 COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/node_modules ./node_modules
+
+# global env across build images
+COPY .env.prod ./.env
