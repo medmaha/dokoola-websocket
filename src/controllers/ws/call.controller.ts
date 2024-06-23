@@ -1,5 +1,5 @@
 import { Server, Socket } from "socket.io";
-import { CallRequest, IncomingCall, OutGoingCall } from "../../types";
+import { CallRequest, OutGoingCall } from "../../types";
 import { loggerSocketRequest } from "./utilities/helpers.js";
 import UserDatabase from "./utilities/db.js";
 
@@ -13,12 +13,13 @@ export default class CallController {
     socket.on("accept-call", (data: OutGoingCall) =>
       CallController.accept(data, socket)
     );
-    socket.on("call-received", (data: OutGoingCall) =>
-      CallController.accept(data, socket)
+    socket.on("decline-call", (data: CallRequest) =>
+      CallController.decline(data, socket)
     );
   }
 
   public static async request(data: CallRequest, socket: Socket) {
+    console.log("CallRequest:", data);
     loggerSocketRequest(socket.id, "/ws/request-call", "call");
 
     // Find the remote user from the connected users list in the database
@@ -56,27 +57,48 @@ export default class CallController {
 
   // User receives the emitted incoming-call event
   public static async accept(data: OutGoingCall, socket: Socket) {
-    loggerSocketRequest(socket.id, "/ws/call-received", "call");
+    console.log("OutGoingCall:", data);
+
+    loggerSocketRequest(socket.id, "/ws/accept-call", "call");
 
     // find the remote user
     const remoteUser = await UserDatabase.get(data.remoteUser?.username);
-    if (!remoteUser) return socket.emit("call-not-connected", data);
+    if (!remoteUser)
+      return socket.emit("call-not-found", "Other user is not online", data);
 
     // find the local user
-    const localUser = await UserDatabase.get(data.localUser?.username);
+    const localUser = await UserDatabase.get(data.localUser.username);
+    if (!localUser)
+      return socket.emit(
+        "call-not-found",
+        `Could not ${data.localUser.name} online`,
+        data
+      );
+
+    // find the local user socket
+    const localUserSocket = CallController.io.sockets.sockets.get(
+      localUser.socketId
+    );
+    if (!localUserSocket)
+      return socket.emit("call-not-found", "Other user is not online", data);
+
+    data["initiator"] = "local";
+    localUserSocket.emit("accepted-call", data);
+  }
+  // User receives the emitted incoming-call event
+  public static async decline(data: CallRequest, socket: Socket) {
+    loggerSocketRequest(socket.id, "/ws/decline-call", "call");
+
+    // find the local user
+    const localUser = await UserDatabase.get(data.caller.username);
     if (!localUser) return socket.emit("call-not-connected", data);
 
     // find the local user socket
     const localUserSocket = CallController.io.sockets.sockets.get(
       localUser.socketId
     );
-    if (!localUserSocket) return socket.emit("call-not-connected", data);
 
-    // Emit the call to the local user with the event-data
-    // Let the initiator create a peer2peer connections
-    data["initiator"] = "local";
-    // data["localUser"] = localUser;
-    // data["remoteUser"] = remoteUser;
-    localUserSocket.emit("accepted-call", data);
+    if (localUserSocket)
+      return socket.emit("call-not-found", `User Busy! try again later`, data);
   }
 }
