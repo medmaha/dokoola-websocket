@@ -19,7 +19,6 @@ export default class CallController {
   }
 
   public static async request(data: CallRequest, socket: Socket) {
-    console.log("CallRequest:", data);
     loggerSocketRequest(socket.id, "/ws/request-call", "call");
 
     // Find the remote user from the connected users list in the database
@@ -57,8 +56,6 @@ export default class CallController {
 
   // User receives the emitted incoming-call event
   public static async accept(data: OutGoingCall, socket: Socket) {
-    console.log("OutGoingCall:", data);
-
     loggerSocketRequest(socket.id, "/ws/accept-call", "call");
 
     // find the remote user
