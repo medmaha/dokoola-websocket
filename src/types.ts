@@ -25,8 +25,8 @@ export interface IncomingCall {
 export interface OutGoingCall {
   type: CallType;
   initiator: "local" | "remote";
-  localUser: SocketUser;
+  caller: SocketUser;
   remoteUser: SocketUser;
-  localPeerId: string;
+  callerPeerId: string;
   remotePeerId: string;
 }

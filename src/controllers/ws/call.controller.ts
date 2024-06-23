@@ -67,38 +67,36 @@ export default class CallController {
       return socket.emit("call-not-found", "Other user is not online", data);
 
     // find the local user
-    const localUser = await UserDatabase.get(data.localUser.username);
-    if (!localUser)
+    const caller = await UserDatabase.get(data.caller.username);
+    if (!caller)
       return socket.emit(
         "call-not-found",
-        `Could not ${data.localUser.name} online`,
+        `Could not ${data.caller.name} online`,
         data
       );
 
     // find the local user socket
-    const localUserSocket = CallController.io.sockets.sockets.get(
-      localUser.socketId
-    );
-    if (!localUserSocket)
+    const callerSocket = CallController.io.sockets.sockets.get(caller.socketId);
+    if (!callerSocket)
       return socket.emit("call-not-found", "Other user is not online", data);
 
     data["initiator"] = "local";
-    localUserSocket.emit("accepted-call", data);
+    callerSocket.emit("accepted-call", data);
   }
   // User receives the emitted incoming-call event
   public static async decline(data: CallRequest, socket: Socket) {
     loggerSocketRequest(socket.id, "/ws/decline-call", "call");
 
     // find the local user
-    const localUser = await UserDatabase.get(data.caller.username);
-    if (!localUser) return socket.emit("call-not-connected", data);
+    const caller = await UserDatabase.get(data.caller.username);
+    if (!caller) return socket.emit("call-not-connected", data);
 
     // find the local user socket
-    const localUserSocket = CallController.io.sockets.sockets.get(
-      localUser.socketId
-    );
+    const callerSocket = CallController.io.sockets.sockets.get(caller.socketId);
 
-    if (localUserSocket)
-      return socket.emit("call-not-found", `User Busy! try again later`, data);
+    if (callerSocket) {
+      socket.emit("call-not-found", `User Busy! try again later`, data);
+      callerSocket.emit("declined-call", data);
+    }
   }
 }
