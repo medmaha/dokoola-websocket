@@ -73,10 +73,10 @@ export default class CallController {
     if (!localUserSocket) return socket.emit("call-not-connected", data);
 
     // Emit the call to the local user with the event-data
-    // Let the initiate a pair of peer connections
+    // Let the initiator create a peer2peer connections
     data["initiator"] = "local";
     // data["localUser"] = localUser;
     // data["remoteUser"] = remoteUser;
-    localUserSocket.emit("make-peer-call", data);
+    localUserSocket.emit("accepted-call", data);
   }
 }
