@@ -1,3 +1,3 @@
 #!/bin/bash
 
-docker push mahamedtoure/dokoola:websocket-001
+docker push intrasoft0/dokoola:websocket-001

@@ -1,3 +1,3 @@
 #!/bin/bash
 
-docker build -t  mahamedtoure/dokoola:websocket-001 .
+docker build -t  intrasoft0/dokoola:websocket-001 .
