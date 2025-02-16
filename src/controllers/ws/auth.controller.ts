@@ -20,7 +20,7 @@ export default class AuthController {
     loggerSocketRequest(socket.id, "/ws/login", "auth");
     socket.data = { user: user };
     socket.emit("logged-in", user);
-    await UserDatabase.set(user.username, {
+    await UserDatabase.set(user.public_id, {
       ...user,
       socketId: socket.id,
     });
@@ -29,6 +29,6 @@ export default class AuthController {
   public static async logout(user: SocketUser, socket: Socket) {
     loggerSocketRequest(socket.id, "/ws/logout", "auth");
     socket.emit("logged-out", user);
-    await UserDatabase.delete(user.username);
+    await UserDatabase.delete(user.public_id);
   }
 }

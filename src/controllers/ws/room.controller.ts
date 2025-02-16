@@ -21,7 +21,7 @@ export default class RoomController {
   public static join(roomId: string, user: SocketUser, socket: Socket) {
     socket.data.user = user;
 
-    if (user.username) {
+    if (user.public_id) {
       AuthController.login(user, socket);
     }
 
