@@ -97,8 +97,19 @@ export default class CallController {
     if (!localUserSocket)
       return socket.emit("call-not-found", "Other user is not online", data);
 
+    // find the remote user's socket
+    const remoteUserSocket = CallController.io.sockets.sockets.get(
+      remoteUser.socketId
+    );
+    if (!remoteUserSocket)
+      return socket.emit("call-not-found", "Other user is not online", data);
+
     data["callerId"] = localUser.public_id;
     localUserSocket.emit("accepted-call", data);
+
+    // Create a room for the call
+    // localUserSocket.join(data.roomId);
+    // remoteUserSocket.join(data.roomId);
   }
   // User receives the emitted incoming-call event
   public static async decline(data: MediaCallData, socket: Socket) {

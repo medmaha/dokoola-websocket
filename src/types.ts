@@ -15,6 +15,7 @@ export interface CallUser {
 
 export interface MediaCallData {
   type: CallType;
+  roomId: string;
   callerId: string;
   remoteUser: CallUser;
   localUser: CallUser;
