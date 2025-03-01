@@ -6,9 +6,10 @@ import { Server } from "socket.io";
 export default class CallController {
   public static io: Server;
 
-  private static getSocketForUser(userId: string): CallSocket | undefined {
-    if (userId) return;
-    return CallController.io.sockets.sockets.get(userId);
+  private static async getSocketForId(socketId: string) {
+    if (socketId) return;
+    const socket = CallController.io.sockets.sockets.get(socketId);
+    return socket as CallSocket;
   }
 
   public static init(socket: CallSocket) {
@@ -43,47 +44,52 @@ export default class CallController {
       );
 
     // find the remote user socket
-    const remoteUserSocket = CallController.getSocketForUser(
+    const remoteUserSocket = await CallController.getSocketForId(
       remoteUser.socketId
     );
-    if (remoteUserSocket) {
-      remoteUserSocket.emit("incoming-call", callData);
-      return;
-    }
-    // If the remote user socket is not found
-    socket.emit(
-      "call-not-found",
-      ` Connection to remote user not found`,
-      callData
-    );
+    if (!remoteUserSocket)
+      return socket.emit(
+        "call-not-found",
+        ` Connection to remote user not found`,
+        callData
+      );
+
+    remoteUserSocket.emit("incoming-call", callData);
+    socket.emit("incoming-call-sent");
   }
 
   // Accept the incoming call
   public static async accept(data: SocketCallData, socket: CallSocket) {
     loggerSocketRequest(socket.id, "/ws/accept-call", "call");
 
-    // find the caller user's socket
-    const callerSocket = CallController.getSocketForUser(data.callerPublicId);
+    const caller = await UserDatabase.get(data.callerPublicId);
+    if (!caller)
+      return socket.emit("call-not-found", "Caller when offline", data);
 
+    // find the caller user's socket
+    const callerSocket = await CallController.getSocketForId(caller.socketId);
     if (!callerSocket)
-      return socket.emit("call-not-found", "You're offline", data);
+      return socket.emit("call-not-found", "Caller when offline", data);
 
     callerSocket.emit("call-accepted", data);
-    callerSocket.emit("call-accepted-sent");
+    socket.emit("call-accepted-sent");
   }
 
-  // This event emiited by the remote-user
+  // This event is emitted by the remote-user
   public static async decline(data: SocketCallData, socket: CallSocket) {
     loggerSocketRequest(socket.id, "/ws/decline-call", "call");
 
-    // find the caller user's socket
-    const callerSocket = CallController.getSocketForUser(data.callerPublicId);
+    const caller = await UserDatabase.get(data.callerPublicId);
+    if (!caller)
+      return socket.emit("call-not-found", "Caller when offline", data);
 
+    // find the caller user's socket
+    const callerSocket = await CallController.getSocketForId(caller.socketId);
     if (!callerSocket)
       return socket.emit("call-not-found", `User Busy! try again later`, data);
 
     callerSocket.emit("call-declined", data);
-    callerSocket.emit("call-declined-sent");
+    socket.emit("call-declined-sent");
   }
 
   public static async cancel(
@@ -95,16 +101,19 @@ export default class CallController {
 
     const remoteRejection = cancelledBy.toLowerCase() === "remote";
 
-    // find the other user's socket
-    const otherSocket = CallController.getSocketForUser(
+    const otherUser = await UserDatabase.get(
       remoteRejection ? data.callerPublicId : data.remotePublicId
     );
+    if (!otherUser)
+      return socket.emit("call-not-found", "Other user is offline", data);
 
+    // find the other user's socket
+    const otherSocket = await CallController.getSocketForId(otherUser.socketId);
     if (!otherSocket)
       return socket.emit("call-not-found", `User Busy! try again later`, data);
 
     // Notify the user that the call has been canceled
+    otherSocket.emit("call-cancelled", data);
     socket.emit("call-cancelled-sent");
-    return otherSocket.emit("call-cancelled", data);
   }
 }
