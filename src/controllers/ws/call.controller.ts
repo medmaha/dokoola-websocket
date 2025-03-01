@@ -38,7 +38,7 @@ export default class CallController {
     if (!remoteUser)
       return socket.emit(
         "call-not-found",
-        `Couldn't connect to ${callData.remoteUser.name}`,
+        `Couldn't connect to remote user`,
         callData
       );
 
@@ -53,7 +53,7 @@ export default class CallController {
     // If the remote user socket is not found
     socket.emit(
       "call-not-found",
-      ` Connection for ${callData.remoteUser.name} not found`,
+      ` Connection to remote user not found`,
       callData
     );
   }
