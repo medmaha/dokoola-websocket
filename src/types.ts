@@ -7,6 +7,8 @@ export type SocketCallData = {
 
 interface EmitEvents {
   "incoming-call": (data: SocketCallData) => void;
+  "incoming-call-sent": () => void;
+
   "call-ended": (data: SocketCallData) => void;
   "call-ended-sent": () => void;
 
@@ -21,9 +23,19 @@ interface EmitEvents {
 
   "call-not-connected": (data: SocketCallData) => void;
   "call-not-found": (reasonPhrase: string, data: SocketCallData) => void;
+
+  "call-unmuted": (data: SocketCallData) => void;
+  "call-muted": (data: SocketCallData) => void;
+  "off-camera": (data: SocketCallData) => void;
+  "onn-camera": (data: SocketCallData) => void;
 }
 
 interface ListenEvents {
+  "mute-call": (data: SocketCallData) => void;
+  "unmute-call": (data: SocketCallData) => void;
+  "off-camera": (data: SocketCallData) => void;
+  "onn-camera": (data: SocketCallData) => void;
+
   "end-call": (data: SocketCallData) => void;
   "accept-call": (data: SocketCallData) => void;
   "request-call": (data: SocketCallData) => void;
