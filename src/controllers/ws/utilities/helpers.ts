@@ -16,6 +16,6 @@ export async function getSocketRoomMembers(roomId: string, io: Server) {
 // prettier-ignore
 export function loggerSocketRequest(socketId: string, path: string, method: string, arg?:any) {
   const timestamp = format(new Date(), "yyyy-MM-dd HH:mm:ss");
-
-    console.log(`<{${timestamp}}> - ${method.toUpperCase()} ${path} - ${socketId} [[ ${arg} ]]`);
+    
+  console.log(`<{${timestamp}}> - ${method.toUpperCase()} ${path} - ${socketId} [[ ${JSON.stringify(arg, null, 3)} ]]`);
 }
