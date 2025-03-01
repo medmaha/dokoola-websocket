@@ -14,7 +14,7 @@ export class WSController {
       connectionStateRecovery: {
         // the backup duration of the sessions and the packets
         maxDisconnectionDuration: 2 * 60 * 1000,
-        // whether to skip middlewares upon successful recovery
+        // We skip the middlewares upon successful recovery
         skipMiddlewares: true,
       },
     });
@@ -22,11 +22,11 @@ export class WSController {
   }
 
   initialize(io: Server) {
-    AuthController.io = io;
-    CallController.io = io;
-    RoomController.io = io;
-
     io.on("connection", (socket) => {
+      AuthController.io = io;
+      CallController.io = io;
+      RoomController.io = io;
+
       AuthController.init(socket);
       CallController.init(socket);
       RoomController.init(socket);
