@@ -7,20 +7,30 @@ import { ExpressApp, HttpServer } from "./config/index.js";
 import { WSController } from "./controllers/index.js";
 import { healthRouter, indexRouter } from "./routes/index.js";
 import { DebugLogger } from "./logger.js";
+import { format } from "date-fns";
 
 const app = ExpressApp;
 
 const logger = DebugLogger("server.log");
 
 const requestLogger = (req: Request, res: Response, next: NextFunction) => {
-  logger.info({
-    method: req.method,
-    url: req.url,
-    ip: req.ip,
-    headers: req.headers,
-    body: req.body,
-  });
-  next();
+  const middleware = (req: Request, res: Response, next: NextFunction) => {
+    const timer = Date.now();
+    res.on("finish", () => {
+      const timestamp = format(new Date(), "yyyy-MM-dd HH:mm:ss");
+      const duration = Date.now() - timer;
+      logger.info({
+        method: req.method,
+        url: req.url,
+        ip: req.ip,
+        timestamp,
+        duration,
+        status: res.statusCode,
+      });
+    });
+    next();
+  };
+  return middleware(req, res, next);
 };
 
 // const allowedHosts = () => {
