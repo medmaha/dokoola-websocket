@@ -1,51 +1,51 @@
 import "dotenv/config";
 import cors from "cors";
-import express from "express";
+import express, { Request, Response, NextFunction } from "express";
+import winston from "winston";
 
 import { ExpressApp, HttpServer } from "./config/index.js";
-import { WSController } from "./controllers/ws/index.js";
-
-import { requestLogger } from "./middleware/logger.js";
+import { WSController } from "./controllers/index.js";
 import { healthRouter, indexRouter } from "./routes/index.js";
+import { DebugLogger } from "./logger.js";
 
 const app = ExpressApp;
 
-const allowedHosts = () => {
-  return "*";
-  const hosts =
-    process.env.ALLOWED_ORIGINS?.split(",").map((host) => {
-      return host.trim();
-    }) || [];
+const logger = DebugLogger("server.log");
 
-  const copy = hosts.slice();
-  for (const host of copy) {
-    hosts.push(host.replace(/http:/gi, "ws:").replace(/https:/gi, "wss:"));
-  }
-  return hosts;
+const requestLogger = (req: Request, res: Response, next: NextFunction) => {
+  logger.info({
+    method: req.method,
+    url: req.url,
+    ip: req.ip,
+    headers: req.headers,
+    body: req.body,
+  });
+  next();
 };
+
+// const allowedHosts = () => {
+//   if (!process.env.ALLOWED_ORIGINS) return "*";
+
+//   const hosts = process.env.ALLOWED_ORIGINS.split(",").map(host => host.trim());
+//   return [...hosts, ...hosts.map(host => host.replace(/^http:/, "ws:").replace(/^https:/, "wss:"))];
+// };
 
 app.use(
   cors({
-    // origin: [
-    //   "http://localhost:3000",
-    //   "http://127.0.0.1:3000",
-    //   "https://129.151.181.32",
-    //   "http://129.151.181.32",
-    // ],
     origin: "*",
+    // origin: allowedHosts(),
   })
 );
 
 app.use(express.json());
-app.use(express.static("dist/public"));
 app.use(requestLogger);
 
 app.use("/", indexRouter);
 app.use("/health", healthRouter);
 
-const PORT = process.env.PORT;
+const PORT = process.env.PORT || 3000;
 
 HttpServer.listen(PORT, () => {
-  console.log(`Listening on port 0.0.0.0:${PORT}`);
+  logger.info(`Server is running on port ${PORT}`);
   new WSController(HttpServer);
 });

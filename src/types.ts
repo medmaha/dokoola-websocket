@@ -54,7 +54,7 @@ export interface SocketUser {
   name: string;
   avatar: string;
   public_id: string;
-  profile: string;
+
   socketId: string;
 }
 

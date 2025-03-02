@@ -1,19 +1,26 @@
+import { InfoLogger } from "../../logger.js";
 import { CallSocket, SocketCallData } from "../../types";
-import { loggerSocketRequest } from "./utilities/helpers.js";
 import UserDatabase from "./utilities/db.js";
 import { Server } from "socket.io";
+
+const logger = InfoLogger("call_controller.log");
 
 export default class CallController {
   public static io: Server;
 
   private static async getSocketForId(socketId: string) {
-    if (socketId) return;
+    if (!socketId) {
+      logger.warn("getSocketForId called with an empty socketId");
+      return;
+    }
     const socket = CallController.io.sockets.sockets.get(socketId);
+    logger.info(`Retrieved socket for ID: ${socketId}`);
     return socket as CallSocket;
   }
 
   public static init(socket: CallSocket) {
     try {
+      logger.info(`Initializing socket events for user: ${socket.id}`);
       socket.on("request-call", (callData) =>
         CallController.request(callData, socket)
       );
@@ -27,73 +34,79 @@ export default class CallController {
         CallController.cancel(callData, cancelledBy, socket)
       );
     } catch (error) {
-      console.log(error);
+      logger.error("Error in CallController.init: ", error);
     }
   }
 
   public static async request(callData: any, socket: CallSocket) {
-    loggerSocketRequest(socket.id, "/ws/request-call", "call", callData);
-
-    // Find the remote user from the connected users list in the database
+    logger.info("Processing request-call", { callData, socketId: socket.id });
     const remoteUser = await UserDatabase.get(callData.remotePublicId);
-    if (!remoteUser)
+    if (!remoteUser) {
+      logger.warn("Remote user not found", callData);
       return socket.emit(
         "call-not-found",
-        `Couldn't connect to remote user`,
+        "Couldn't connect to remote user",
         callData
       );
+    }
 
-    // find the remote user socket
     const remoteUserSocket = await CallController.getSocketForId(
       remoteUser.socketId
     );
-    if (!remoteUserSocket)
+    if (!remoteUserSocket) {
+      logger.warn("Remote user socket not found", callData);
       return socket.emit(
         "call-not-found",
-        ` Connection to remote user not found`,
+        "Connection to remote user not found",
         callData
       );
+    }
 
     remoteUserSocket.emit("incoming-call", callData);
     socket.emit("incoming-call-sent");
+    logger.info("Incoming call event emitted", callData);
   }
 
-  // Accept the incoming call
   public static async accept(callData: SocketCallData, socket: CallSocket) {
-    loggerSocketRequest(socket.id, "/ws/accept-call", "call", callData);
-
+    logger.info("Processing accept-call", { callData, socketId: socket.id });
     const caller = await UserDatabase.get(callData.callerPublicId);
-    if (!caller)
-      return socket.emit("call-not-found", "Caller when offline", callData);
+    if (!caller) {
+      logger.warn("Caller not found", callData);
+      return socket.emit("call-not-found", "Caller went offline", callData);
+    }
 
-    // find the caller user's socket
     const callerSocket = await CallController.getSocketForId(caller.socketId);
-    if (!callerSocket)
-      return socket.emit("call-not-found", "Caller when offline", callData);
+    if (!callerSocket) {
+      logger.warn("Caller socket not found", callData);
+      return socket.emit("call-not-found", "Caller went offline", callData);
+    }
 
     callerSocket.emit("call-accepted", callData);
     socket.emit("call-accepted-sent");
+    logger.info("Call accepted event emitted", callData);
   }
 
-  // This event is emitted by the remote-user
   public static async decline(callData: SocketCallData, socket: CallSocket) {
-    loggerSocketRequest(socket.id, "/ws/decline-call", "call", callData);
-
+    logger.info("Processing decline-call", { callData, socketId: socket.id });
     const caller = await UserDatabase.get(callData.callerPublicId);
-    if (!caller)
-      return socket.emit("call-not-found", "Caller when offline", callData);
+    if (!caller) {
+      logger.warn("Caller not found", callData);
+      return socket.emit("call-not-found", "Caller went offline", callData);
+    }
 
-    // find the caller user's socket
     const callerSocket = await CallController.getSocketForId(caller.socketId);
-    if (!callerSocket)
+    if (!callerSocket) {
+      logger.warn("Caller socket not found", callData);
       return socket.emit(
         "call-not-found",
-        `User Busy! try again later`,
+        "User Busy! Try again later",
         callData
       );
+    }
 
     callerSocket.emit("call-declined", callData);
     socket.emit("call-declined-sent");
+    logger.info("Call declined event emitted", callData);
   }
 
   public static async cancel(
@@ -101,27 +114,32 @@ export default class CallController {
     cancelledBy: string,
     socket: CallSocket
   ) {
-    loggerSocketRequest(socket.id, "/ws/cancel-call", "call", callData);
-
+    logger.info("Processing cancel-call", {
+      callData,
+      cancelledBy,
+      socketId: socket.id,
+    });
     const remoteRejection = cancelledBy.toLowerCase() === "remote";
-
     const otherUser = await UserDatabase.get(
       remoteRejection ? callData.callerPublicId : callData.remotePublicId
     );
-    if (!otherUser)
+    if (!otherUser) {
+      logger.warn("Other user not found", callData);
       return socket.emit("call-not-found", "Other user is offline", callData);
+    }
 
-    // find the other user's socket
     const otherSocket = await CallController.getSocketForId(otherUser.socketId);
-    if (!otherSocket)
+    if (!otherSocket) {
+      logger.warn("Other user's socket not found", callData);
       return socket.emit(
         "call-not-found",
-        `User Busy! try again later`,
+        "User Busy! Try again later",
         callData
       );
+    }
 
-    // Notify the user that the call has been canceled
     otherSocket.emit("call-cancelled", callData);
     socket.emit("call-cancelled-sent");
+    logger.info("Call cancelled event emitted", { callData, cancelledBy });
   }
 }

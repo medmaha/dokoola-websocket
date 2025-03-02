@@ -2,19 +2,18 @@ import { Server } from "socket.io";
 import AuthController from "./auth.controller.js";
 import CallController from "./call.controller.js";
 import RoomController from "./room.controller.js";
-import { loggerSocketRequest } from "./utilities/helpers.js";
 import UserDatabase from "./utilities/db.js";
+import { InfoLogger } from "../../logger.js";
 
-export class WSController {
+const logger = InfoLogger("ws_controller.log");
+export default class WSController {
   constructor(httpServer: any) {
     const io = new Server(httpServer, {
       cors: {
         origin: "*",
       },
       connectionStateRecovery: {
-        // the backup duration of the sessions and the packets
         maxDisconnectionDuration: 2 * 60 * 1000,
-        // We skip the middlewares upon successful recovery
         skipMiddlewares: true,
       },
     });
@@ -23,6 +22,8 @@ export class WSController {
 
   initialize(io: Server) {
     io.on("connection", (socket) => {
+      logger.info("New connection established", { socketId: socket.id });
+
       AuthController.io = io;
       CallController.io = io;
       RoomController.io = io;
@@ -32,28 +33,34 @@ export class WSController {
       RoomController.init(socket);
 
       if (socket.recovered) {
-        // recovery was successful: socket.id, socket.rooms and socket.data were restored
-        loggerSocketRequest(socket.id, "/ws", "recover");
+        logger.info("Session recovered", {
+          socketId: socket.id,
+          rooms: Array.from(socket.rooms),
+        });
       } else {
-        // new or unrecoverable session
-        loggerSocketRequest(socket.id, "/ws", "connect");
+        logger.info("New session started", { socketId: socket.id });
       }
 
       socket.on("disconnect", () => {
-        loggerSocketRequest(socket.id, "/ws", "disconnect");
+        logger.info("User disconnected", {
+          socketId: socket.id,
+          user: socket.data.user,
+        });
 
         const rooms = Array.from(socket.rooms);
-
         for (const roomId of rooms) {
           socket.to(roomId).emit("user-disconnected", socket.data.user);
         }
 
-        // Clear the socket rooms
         socket.rooms.clear();
         socket.emit("disconnected");
 
-        // remove the user from the database
-        UserDatabase.delete(socket.data?.user?.username);
+        if (socket.data?.user?.username) {
+          UserDatabase.delete(socket.data.user.username);
+          logger.info("User removed from database", {
+            username: socket.data.user.username,
+          });
+        }
       });
     });
 
