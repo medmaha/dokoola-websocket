@@ -28,7 +28,7 @@ export const DebugLogger = (filename: `${string}.log`) => {
     ),
     transports: [
       new winston.transports.Console(),
-      new winston.transports.File({ filename: getFilePath(filename) }),
+      // new winston.transports.File({ filename: getFilePath(filename) }),
     ],
   });
 };
