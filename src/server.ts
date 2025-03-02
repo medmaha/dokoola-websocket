@@ -19,7 +19,7 @@ const requestLogger = (req: Request, res: Response, next: NextFunction) => {
     res.on("finish", () => {
       const timestamp = format(new Date(), "yyyy-MM-dd HH:mm:ss");
       const duration = Date.now() - timer;
-      logger.info({
+      logger.debug({
         method: req.method,
         url: req.url,
         ip: req.ip,
@@ -56,6 +56,6 @@ app.use("/health", healthRouter);
 const PORT = process.env.PORT || 3000;
 
 HttpServer.listen(PORT, () => {
-  logger.info(`Server is running on port ${PORT}`);
+  logger.debug(`Server is running on port ${PORT}`);
   new WSController(HttpServer);
 });
