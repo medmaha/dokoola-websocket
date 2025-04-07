@@ -1,7 +1,6 @@
-import "dotenv/config";
+import { config } from "dotenv";
 import cors from "cors";
 import express, { Request, Response, NextFunction } from "express";
-import winston from "winston";
 
 import { ExpressApp, HttpServer } from "./config/index.js";
 import { WSController } from "./controllers/index.js";
@@ -10,6 +9,8 @@ import { DebugLogger } from "./logger.js";
 import { format } from "date-fns";
 
 const app = ExpressApp;
+
+config()
 
 const logger = DebugLogger("server.log");
 

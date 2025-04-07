@@ -1,6 +1,6 @@
 import { InfoLogger } from "../../logger.js";
-import { CallSocket, SocketCallData } from "../../types";
-import UserDatabase from "./utilities/db.js";
+import { CallSocket, SocketCallData } from "../../types.js";
+import UserDatabase from "../../storage/db.js";
 import { Server } from "socket.io";
 
 const logger = InfoLogger("call_controller.log");
@@ -144,7 +144,7 @@ export default class CallController {
       return socket.emit("call-not-found", "Other user is offline", callData);
     }
 
-    const otherSocket = await CallController.getSocketForId(otherUser.socketId);
+    const otherSocket = await CallController.getSocketForId(otherUser.public_id);
     if (!otherSocket) {
       logger.warn("Other user's socket not found", parseCallData(callData));
       return socket.emit(

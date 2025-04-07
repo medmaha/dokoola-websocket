@@ -1,6 +1,6 @@
 import { Server, Socket } from "socket.io";
-import { SocketUser } from "../../types";
-import UserDatabase from "./utilities/db.js";
+import { SocketUser } from "../../types.js";
+import UserDatabase from "../../storage/db.js";
 import { InfoLogger } from "../../logger.js";
 
 const logger = InfoLogger("auth_controller.log");

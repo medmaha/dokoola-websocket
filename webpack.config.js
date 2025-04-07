@@ -1,9 +1,9 @@
 import path from "path";
 
 const config = {
-  entry: "./dist/app.js",
+  entry: "./dist/app",
   output: {
-    filename: "app.js",
+    filename: "app",
   },
   module: {
     rules: [

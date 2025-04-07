@@ -1,20 +1,31 @@
-import redis from "redis";
+import { createClient } from "redis";
 
-const USERNAME = process.env.REDIS_USER;
-const PASSWORD = process.env.REDIS_PASS;
-const HOST = process.env.REDIS_HOST;
-const PORT = process.env.REDIS_PORT;
+const username = process.env.REDIS_USER;
+const password = process.env.REDIS_PASS;
+const host = process.env.REDIS_HOST;
+const port = Number(process.env.REDIS_PORT);
 
-const client = redis.createClient({
-  url: `redis://${USERNAME}:${PASSWORD}@${HOST}:${PORT}`,
-});
+let client: ReturnType<typeof createClient> | undefined
 
-client.on("error", (err) => {
-  console.log("❌ - Redis Client Error", err);
-  process.exit(1);
-});
+try {
+  client = createClient({
+    username,
+    password,
+    socket: {
+      host,
+      port
+    }
+  });
 
-client.on("connect", () => console.log("✔️  - Redis Client Connected"));
+  client.on("error", (err) => {
+    console.log("❌ - Redis Client Error", err);
+    process.exit(1);
+  });
+
+  client.on("connect", () => console.log("✔️  - Redis Client Connected"));
+} catch (error:any) {
+  console.log("❌ - Redis Client Error", error.message);
+}
 
 let initialized = false;
 
@@ -24,6 +35,7 @@ async function init(client: any) {
   await client.connect();
 }
 
-init(client);
+// if (client)
+//   init(client);
 
 export default client;

@@ -1,6 +1,6 @@
 import { Server, Socket } from "socket.io";
-import { SocketUser } from "../../types";
-import { getSocketRoomMembers } from "./utilities/helpers.js";
+import { SocketUser } from "../../types.js";
+import { getSocketRoomMembers } from "../../utilities/helpers.js";
 import AuthController from "./auth.controller.js";
 import { InfoLogger } from "../../logger.js";
 

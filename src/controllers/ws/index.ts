@@ -2,7 +2,7 @@ import { Server } from "socket.io";
 import AuthController from "./auth.controller.js";
 import CallController from "./call.controller.js";
 import RoomController from "./room.controller.js";
-import UserDatabase from "./utilities/db.js";
+import UserDatabase from "../../storage/db.js";
 import { InfoLogger } from "../../logger.js";
 
 const logger = InfoLogger("ws_controller.log");
