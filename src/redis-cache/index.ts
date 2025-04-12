@@ -1,41 +1,44 @@
-import { createClient } from "redis";
+import { createClient, RedisClientType } from "redis";
 
 const username = process.env.REDIS_USER;
 const password = process.env.REDIS_PASS;
 const host = process.env.REDIS_HOST;
 const port = Number(process.env.REDIS_PORT);
 
-let client: ReturnType<typeof createClient> | undefined
+let redisClient: ReturnType<typeof createClient> | null | undefined= null;
 
-try {
-  client = createClient({
-    username,
-    password,
-    socket: {
-      host,
-      port
+export async function getRedisClient(): Promise<typeof redisClient> {
+
+    // Return the existing client if it's already connected
+    if (redisClient && redisClient.isOpen) {
+        return redisClient;
     }
-  });
 
-  client.on("error", (err) => {
-    console.log("❌ - Redis Client Error", err);
-    process.exit(1);
-  });
+    try {
+        const _client = createClient({
+            username,
+            password,
+            socket: {
+                host,
+                port
+            }
+        });
 
-  client.on("connect", () => console.log("✔️  - Redis Client Connected"));
-} catch (error:any) {
-  console.log("❌ - Redis Client Error", error.message);
+        _client.on("error", (err) => {
+            console.error("❌ - Redis Client Error:", err);
+        });
+
+        _client.on("connect", () => {
+            console.log("✔️ - Redis Client Connected");
+        });
+
+        await _client.connect();
+
+        redisClient = _client;
+        return redisClient;
+
+    } catch (error: any) {
+        console.error("❌ - Redis Connection Error:", error.message);
+        throw error;
+    }
 }
-
-let initialized = false;
-
-async function init(client: any) {
-  if (initialized) return;
-  initialized = true;
-  await client.connect();
-}
-
-// if (client)
-//   init(client);
-
-export default client;

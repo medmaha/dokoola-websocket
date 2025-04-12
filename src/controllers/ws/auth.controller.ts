@@ -15,6 +15,9 @@ export default class AuthController {
     socket.on("logout", (user: SocketUser) =>
       AuthController.logout(user, socket)
     );
+    socket.on("online-users", () =>
+      AuthController.getOnlineUsers(socket)
+    );
   }
 
   // User logging in
@@ -26,7 +29,7 @@ export default class AuthController {
       ...user,
       socketId: socket.id,
     });
-    logger.info("User login successful", { userId: user.public_id });
+    UserDatabase.onlineUsers.add(user.public_id)
   }
 
   // User logging out
@@ -34,6 +37,10 @@ export default class AuthController {
     logger.info("User logging out", { user, socketId: socket.id });
     socket.emit("logged-out", user);
     await UserDatabase.delete(user.public_id);
-    logger.info("User logout successful", { userId: user.public_id });
+    UserDatabase.onlineUsers.delete(user.public_id)
+  }
+
+  public static async getOnlineUsers(socket: Socket){
+    socket.emit("online-users", Array.from(UserDatabase.onlineUsers))
   }
 }

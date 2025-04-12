@@ -10,20 +10,19 @@ export default class RoomController {
   public static io: Server;
 
   public static init(socket: Socket) {
-    logger.info(`Initializing socket events for user: ${socket.id}`);
-    socket.on("join-room", (data: { roomId: string; user: SocketUser }) =>
-      RoomController.join(data.roomId, data.user, socket)
+    socket.on("join-chat-room", (roomId: string, user: SocketUser) =>
+      RoomController.join(roomId, user, socket)
     );
-    socket.on("leave-room", (data: { roomId: string; user: SocketUser }) =>
-      RoomController.leave(data.roomId, data.user, socket)
+    socket.on("leave-chat-room", (roomId: string, user: SocketUser) =>
+      RoomController.leave(roomId, user, socket)
     );
-    socket.on("new-chat", (data: { roomId: string; data: any }) =>
-      RoomController.chat(data.roomId, data.data, socket)
+    socket.on("new-message", (roomId: string, data: any) =>
+      RoomController.chat(roomId, data, socket)
     );
   }
 
   public static join(roomId: string, user: SocketUser, socket: Socket) {
-    logger.info("User joining room", {
+    logger.info("User joining chat room", {
       roomId,
       userId: user.public_id,
       socketId: socket.id,
@@ -36,14 +35,13 @@ export default class RoomController {
 
     async function notifyMembers() {
       const roomMembers = await getSocketRoomMembers(roomId, RoomController.io);
-      RoomController.io.to(roomId).emit("room-members", roomMembers);
+      RoomController.io.to(roomId).emit("chat-room-members", roomMembers);
     }
 
     if (!socket.rooms.has(roomId)) {
       socket.join(roomId);
-      socket.emit("joined-room", roomId);
-      socket.broadcast.to(roomId).emit("joined-group", user);
-      logger.info("User joined room", { roomId, userId: user.public_id });
+      socket.emit("joined-chat-room", roomId);
+      socket.broadcast.to(roomId).emit("joined-chat-group", user);
     }
     notifyMembers();
   }
@@ -57,16 +55,27 @@ export default class RoomController {
     socket.emit("left-room", roomId);
     socket.to(roomId).emit("left-group", user);
     socket.leave(roomId);
-    logger.info("User left room", { roomId, userId: user.public_id });
   }
 
   public static chat(roomId: string, data: any, socket: Socket) {
     logger.info("User sending chat message", {
       roomId,
       socketId: socket.id,
-      message: data,
+      message: JSON.stringify(data),
     });
-    socket.emit("new-chat-dispatched", roomId);
-    socket.to(roomId).emit("new-chat", data);
+    if (!socket.rooms.has(roomId)) {
+      socket.join(roomId);
+      socket.emit("joined-chat-room", roomId);
+    }
+
+    // get all sockets from this room
+    const sockets = Array.from(RoomController.io.sockets.adapter.rooms.get(roomId) ?? []);
+
+    console.log("S=====================================================================================")
+    console.log(sockets)
+    console.log("S=====================================================================================")
+
+    socket.emit("new-message-sent", data);
+    socket.to(roomId).emit("new-message", data);
   }
 }
