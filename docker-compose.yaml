@@ -16,7 +16,7 @@ services:
       REDIS_PORT: 6379
       REDIS_USER: default
       REDIS_HOST: redis
-      REDIS_PASS: dkl!-@redis-pass-#321
+      REDIS_PASS: ws-secret-pass
 
     depends_on:
       - redis
@@ -24,4 +24,4 @@ services:
   redis:
     container_name: dokoola-websocket-cache
     image: redis:alpine
-    command: redis-server --requirepass dkl!-@redis-pass-#321
+    command: "redis-server --requirepass ws-secret-pass"
