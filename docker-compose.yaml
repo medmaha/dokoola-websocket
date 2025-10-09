@@ -1,0 +1,13 @@
+name: Dokoola Websocket Container
+
+services:
+  websocket:
+    container_name: dokoola-websocket
+    
+    build: .
+    env_file:
+      - .env
+    ports:
+      - "5500:5500"
+
+    command: node dist/server.js
