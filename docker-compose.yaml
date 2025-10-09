@@ -6,8 +6,21 @@ services:
     
     build: .
     env_file:
-      - .env
+      - .env.prod
     ports:
       - "5500:5500"
 
     command: node dist/server.js
+
+    environment:
+      - "REDIS_PORT:6379"
+      - "REDIS_USER:redis"
+      - "REDIS_HOST:redis"
+
+    depends_on:
+      - redis
+
+  redis:
+    image: redis:alpine
+    ports:
+      - "6379:6379"
