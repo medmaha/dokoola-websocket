@@ -1,7 +1,7 @@
 import { createClient } from "redis";
 
+const password = process.env.REDIS_PASS;
 const username = process.env.REDIS_USER || '';
-const password = process.env.REDIS_PASS || '';
 const host = process.env.REDIS_HOST || 'localhost';
 const port = Number(process.env.REDIS_PORT) || 6379;
 
@@ -25,8 +25,8 @@ export async function getRedisClient(): Promise<typeof redisClient> {
     
     try {
         const _client = createClient({
+            password: password,
             username: username || undefined,
-            password: password || undefined,
             socket: {
                 host,
                 port,
