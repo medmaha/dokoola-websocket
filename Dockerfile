@@ -24,3 +24,8 @@ COPY --from=builder /app/node_modules ./node_modules
 
 # global env across build images
 COPY .env.prod ./.env
+
+# Expose port
+EXPOSE 5500
+
+CMD [ "node", "dist/server.js" ]

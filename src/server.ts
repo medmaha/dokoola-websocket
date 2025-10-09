@@ -54,7 +54,7 @@ app.use(requestLogger);
 app.use("/", indexRouter);
 app.use("/health", healthRouter);
 
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 5500;
 
 HttpServer.listen(PORT, () => {
   logger.debug(`Server is running on port ${PORT}`);
