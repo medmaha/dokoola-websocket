@@ -3,22 +3,22 @@ WORKDIR /app
 COPY package.json ./
 
 # Development deps
-FROM base as dev-deps
+FROM base AS dev-deps
 RUN yarn install
 
 # Production deps
-FROM base as prod-deps
+FROM base AS prod-deps
 RUN yarn install --prod
 
 # Builder 
-FROM base as builder
+FROM base AS builder
 COPY --from=dev-deps /app/node_modules ./node_modules
 COPY src ./src
 COPY tsconfig.json ./
 RUN yarn build
 
 # Final Image
-FROM base as final
+FROM base AS final
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/node_modules ./node_modules
 

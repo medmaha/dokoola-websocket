@@ -13,14 +13,15 @@ services:
     command: node dist/server.js
 
     environment:
-      - "REDIS_PORT:6379"
-      - "REDIS_USER:redis"
-      - "REDIS_HOST:redis"
+      REDIS_PORT: 6379
+      REDIS_USER: default
+      REDIS_HOST: redis
+      REDIS_PASS: dkl!-@redis-pass-#321
 
     depends_on:
       - redis
 
   redis:
+    container_name: dokoola-websocket-cache
     image: redis:alpine
-    ports:
-      - "6379:6379"
+    command: redis-server --requirepass dkl!-@redis-pass-#321
