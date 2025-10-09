@@ -1,8 +1,8 @@
 import { createClient } from "redis";
 
+const host = process.env.REDIS_HOST;
 const password = process.env.REDIS_PASS;
-const username = process.env.REDIS_USER || '';
-const host = process.env.REDIS_HOST || 'localhost';
+const username = process.env.REDIS_USER;
 const port = Number(process.env.REDIS_PORT) || 6379;
 
 let redisClient: ReturnType<typeof createClient> | null = null;
@@ -25,12 +25,12 @@ export async function getRedisClient(): Promise<typeof redisClient> {
     
     try {
         const _client = createClient({
-            password: password,
-            username: username || undefined,
+            url: `redis://${username}${password ? `:${password}` : ""}@${host}:${port}`,
             socket: {
                 host,
                 port,
                 reconnectStrategy: (retries) => {
+                    console.log(`[username:${username}] [password:${password}]`)
                     if (retries > 5) {
                         console.error('❌ - Redis max reconnection attempts reached');
                         return new Error('Max reconnection attempts reached');
