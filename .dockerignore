@@ -1,9 +1,0 @@
-# .dockerignore
-node_modules/
-build/
-dist/
-.logs/
-*.log
-*.tsbuildinfo
-.DS_Store
-.env

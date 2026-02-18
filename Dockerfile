@@ -1,31 +1,18 @@
-FROM node:alpine AS base
+FROM golang:1.21-alpine as builder
 WORKDIR /app
-COPY package.json ./
+COPY . .
+RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-w -s" -o server ./cmd/server.go
 
-# Development deps
-FROM base AS dev-deps
-RUN yarn install
+FROM scratch
+WORKDIR /app
+COPY --from=builder /app/server /server
+COPY .env ./
 
-# Production deps
-FROM base AS prod-deps
-RUN yarn install --prod
+ENV GOGC 50
 
-# Builder 
-FROM base AS builder
-COPY --from=dev-deps /app/node_modules ./node_modules
-COPY src ./src
-COPY tsconfig.json ./
-RUN yarn build
+EXPOSE 8080
 
-# Final Image
-FROM base AS final
-COPY --from=builder /app/dist ./dist
-COPY --from=builder /app/node_modules ./node_modules
+# non-root
+USER 1000  
 
-# global env across build images
-COPY .env.prod ./.env
-
-# Expose port
-EXPOSE 5500
-
-CMD [ "node", "dist/server.js" ]
+CMD ["./server"]

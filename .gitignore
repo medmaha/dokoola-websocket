@@ -1,6 +1,1 @@
 .env
-.env.prod
-.env.docker
-dist/
-node_modules/
-.logs/
