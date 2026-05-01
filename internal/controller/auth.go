@@ -13,7 +13,7 @@ import (
 
 type AuthController struct {
 	Storage storage.Storage
-	logger *zap.Logger
+	logger  *zap.Logger
 }
 
 func NewAuthController(s storage.Storage, logger *zap.Logger) *AuthController {
@@ -21,11 +21,10 @@ func NewAuthController(s storage.Storage, logger *zap.Logger) *AuthController {
 }
 
 // HandleLogin processes login event, stores user, and confirms login
-func (a *AuthController	) HandleLogin(ctx context.Context, conn *websocket.Conn, data interface{}) string {
+func (a *AuthController) HandleLogin(ctx context.Context, conn *websocket.Conn, data interface{}) string {
 	b, _ := json.Marshal(data)
 	var user pkg.User
 	logger := a.logger
-	 
 
 	if err := json.Unmarshal(b, &user); err != nil || user.PublicID == "" {
 		logger.Warn("WARN Login failed: invalid user data", zap.Any("data", data))
@@ -33,9 +32,20 @@ func (a *AuthController	) HandleLogin(ctx context.Context, conn *websocket.Conn,
 		return ""
 	}
 	user.SocketID = conn.RemoteAddr().String()
-	a.Storage.SetUser(ctx, user)
-	a.Storage.SetOnline(ctx, user.PublicID)
-	logger.Info("INFO User logged in", zap.String("publicID", user.PublicID))
+
+	if err := a.Storage.SetUser(ctx, user); err != nil {
+		logger.Warn("WARN Failed to set user", zap.String("publicID", user.PublicID), zap.Error(err))
+		conn.WriteJSON(map[string]interface{}{"event": "login-error", "data": "failed to store user"})
+		return ""
+	}
+
+	if err := a.Storage.SetOnline(ctx, user.PublicID); err != nil {
+		logger.Warn("WARN Failed to set user online", zap.String("publicID", user.PublicID), zap.Error(err))
+		conn.WriteJSON(map[string]interface{}{"event": "login-error", "data": "failed to set online status"})
+		return ""
+	}
+
+	logger.Debug("INFO User logged in", zap.String("publicID", user.PublicID))
 	conn.WriteJSON(map[string]interface{}{"event": "login-success", "data": user})
 	return user.PublicID
 }
@@ -45,15 +55,18 @@ func (a *AuthController) HandleLogout(ctx context.Context, conn *websocket.Conn,
 	a.Storage.DeleteUser(ctx, publicID)
 	logger := a.logger
 
-	logger.Info("INFO User logged out", zap.String("publicID", publicID))
+	logger.Debug("INFO User logged out", zap.String("publicID", publicID))
 	conn.WriteJSON(map[string]interface{}{"event": "logout-success"})
 }
 
 // HandleOnlineUsers returns the list of online users
 func (a *AuthController) HandleOnlineUsers(ctx context.Context, conn *websocket.Conn) {
-	users, _ := a.Storage.ListOnlineUsers(ctx)
+	users, err := a.Storage.ListOnlineUsers(ctx)
 	logger := a.logger
 
-	logger.Info("INFO Online users requested", zap.Int("count", len(users)))
+	if err != nil {
+		logger.Warn("WARN Failed to get online users", zap.Error(err))
+	}
+	logger.Debug("INFO Online users requested", zap.Int("count", len(users)), zap.Strings("users", users))
 	conn.WriteJSON(map[string]interface{}{"event": "online-users", "data": users})
 }

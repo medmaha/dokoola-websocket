@@ -1,10 +1,8 @@
 package server
 
 import (
-	"context"
 	"net/http"
 	"os"
-	"time"
 
 	"github.com/dokoola/websocket/internal/controller"
 	"github.com/dokoola/websocket/internal/storage"
@@ -17,7 +15,7 @@ import (
 
 func Run() {
 	logger := pkg.Logger("server")
-	
+
 	config := &pkg.GlobalConfig{Logger: logger}
 
 	_ = godotenv.Load()
@@ -25,18 +23,12 @@ func Run() {
 
 	r.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`{"status":"ok"}`)) 
+		w.Write([]byte(`{"status":"ok"}`))
 	})
 
-	// Storage: try Redis, fallback to in-memory
-	var store storage.Storage
-	store = storage.NewRedisStorage()
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
-	defer cancel()
-	if err := store.ClearAll(ctx); err != nil {
-		logger.Warn("WARN Redis unavailable, using in-memory storage: %v", zap.Error(err))
-		store = storage.NewInMemoryStorage()
-	}
+	// Storage: in-memory cache for single-instance deployment
+	store := storage.NewInMemoryStorage()
+	logger.Info("INFO Storage initialized", zap.String("storage_type", "InMemory"))
 
 	hub := NewHub(store)
 	auth := controller.NewAuthController(store, logger)

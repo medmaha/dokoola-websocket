@@ -16,9 +16,9 @@ import (
 
 var upgrader = websocket.Upgrader{
 	ReadBufferSize:  1024,
-    WriteBufferSize: 1024,
+	WriteBufferSize: 1024,
 	// Reuse buffers to save memory
-    WriteBufferPool: &sync.Pool{}, 
+	WriteBufferPool: &sync.Pool{},
 	CheckOrigin: func(r *http.Request) bool {
 		return true // CORS: allow all origins (for now)
 	},
@@ -38,17 +38,20 @@ func NewHub(storage storage.Storage) *Hub {
 }
 
 func (h *Hub) RegisterConn(publicID string, conn *websocket.Conn) {
-	h.mu.Lock(); defer h.mu.Unlock()
+	h.mu.Lock()
+	defer h.mu.Unlock()
 	h.conns[publicID] = conn
 }
 
 func (h *Hub) UnregisterConn(publicID string) {
-	h.mu.Lock(); defer h.mu.Unlock()
+	h.mu.Lock()
+	defer h.mu.Unlock()
 	delete(h.conns, publicID)
 }
 
 func (h *Hub) GetConn(publicID string) *websocket.Conn {
-	h.mu.RLock(); defer h.mu.RUnlock()
+	h.mu.RLock()
+	defer h.mu.RUnlock()
 	return h.conns[publicID]
 }
 
@@ -72,7 +75,7 @@ func WebSocketHandler(hub *Hub, auth *controller.AuthController, call *controlle
 		lastActive := time.Now()
 		done := make(chan struct{})
 
-		// Watchdog goroutine		
+		// Watchdog goroutine
 		go func() {
 			ticker := time.NewTicker(5 * time.Minute)
 			defer ticker.Stop()
@@ -91,8 +94,6 @@ func WebSocketHandler(hub *Hub, auth *controller.AuthController, call *controlle
 			}
 		}()
 
-
-		
 		for {
 			var msg map[string]interface{}
 			conn.SetReadDeadline(time.Now().Add(idleTimeout))
@@ -100,9 +101,9 @@ func WebSocketHandler(hub *Hub, auth *controller.AuthController, call *controlle
 				break
 			}
 			lastActive = time.Now()
-				event, _ := msg["event"].(string)
-				data := msg["data"]
-				logger.Info("INFO Received WebSocket event - event=%s data=%v", zap.String("event", event), zap.Any("data", data))
+			event, _ := msg["event"].(string)
+			data := msg["data"]
+			logger.Info("INFO Received WebSocket event - event=%s data=%v", zap.String("event", event), zap.Any("data", data))
 			switch event {
 			case "login":
 				pid := auth.HandleLogin(ctx, conn, data)
