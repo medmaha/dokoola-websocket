@@ -1,0 +1,94 @@
+name: Websocket CI/CD
+
+permissions:
+  contents: write
+  packages: write
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  SERVICE_NAME: websocket
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    name: Run Tests
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '25.6'
+
+      - name: Install dependencies
+        run: |
+          go mod tidy
+
+      - name: Run tests
+        run: go test -v ./...
+        env:
+          PORT: 8083
+          LOG_DIR: logs
+          CORS_ORIGINS: "*"
+          SESSION_TTL: 86400
+          RECOVERY_TTL: 120
+          MAX_CONN_IDLE: 45
+          VM_USERNAME: opc
+          OCI_VM_IP: 89.168.58.175
+
+  changelog:
+    needs: test
+    runs-on: ubuntu-latest
+    name: Update Changelog
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && github.actor != 'github-actions[bot]'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Checkout actions repository
+        uses: actions/checkout@v4
+        with:
+          repository: medmaha/dokoola-github-actions
+          token: ${{ secrets.GH_PAT }}
+          path: .github/actions-repo
+
+      - name: Generate and commit changelog
+        uses: ./.github/actions-repo/changelog
+        with:
+          service_name: websocket
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+
+  build:
+    needs: [test, changelog]
+    runs-on: ubuntu-latest
+    name: Build & Push Docker Image
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Checkout actions repository
+        uses: actions/checkout@v4
+        with:
+          repository: medmaha/dokoola-github-actions
+          token: ${{ secrets.GH_PAT }}
+          path: .github/actions-repo
+
+      - name: Build and push Docker image
+        uses: ./.github/actions-repo/dockerize
+        with:
+          docker_image: ${{ secrets.DOCKER_IMAGE }}
+          context: .
+          dockerfile: ./Dockerfile
+          username: ${{ secrets.DOCKER_USERNAME }}
+          access_token: ${{ secrets.DOCKER_ACCESS_TOKEN }}
