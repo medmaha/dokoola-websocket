@@ -68,7 +68,7 @@ func WebSocketHandler(hub *Hub, auth *controller.AuthController, call *controlle
 		defer conn.Close()
 
 		ctx := context.Background()
-		var publicID string
+		var user *pkg.User
 
 		// Auto-close inactive connections after 30 minutes
 		idleTimeout := time.Duration(pkg.GetEnvInt("MAX_CONN_IDLE", 30)) * time.Minute
@@ -106,16 +106,19 @@ func WebSocketHandler(hub *Hub, auth *controller.AuthController, call *controlle
 			logger.Info("INFO Received WebSocket event - event=%s data=%v", zap.String("event", event), zap.Any("data", data))
 			switch event {
 			case "login":
-				pid := auth.HandleLogin(ctx, conn, data)
-				if pid != "" {
-					publicID = pid
-					hub.RegisterConn(publicID, conn)
+				u := auth.HandleLogin(ctx, conn, data)
+				switch v := u.(type) {
+				case pkg.User:
+					user = &v
+					hub.RegisterConn(user.PublicID, conn)
 				}
 			case "logout":
-				if publicID != "" {
-					auth.HandleLogout(ctx, conn, publicID)
-					hub.UnregisterConn(publicID)
-					publicID = ""
+				if user != nil {
+					auth.HandleLogout(ctx, conn, user)
+					hub.UnregisterConn(user.PublicID)
+					conn.Close()
+					close(done)
+					user = nil
 				}
 			case "online-users":
 				auth.HandleOnlineUsers(ctx, conn)
@@ -142,9 +145,10 @@ func WebSocketHandler(hub *Hub, auth *controller.AuthController, call *controlle
 			}
 		}
 		close(done)
-		if publicID != "" {
-			hub.UnregisterConn(publicID)
-			auth.HandleLogout(ctx, conn, publicID)
+		if user != nil {
+			hub.UnregisterConn(user.PublicID)
+			auth.HandleLogout(ctx, conn, user)
+			user = nil
 		}
 	}
 }
