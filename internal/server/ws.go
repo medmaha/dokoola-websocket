@@ -2,9 +2,12 @@ package server
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"sync"
+	"sync/atomic"
 	"time"
+	"unsafe"
 
 	"github.com/dokoola/websocket/internal/controller"
 	"github.com/dokoola/websocket/internal/storage"
@@ -17,16 +20,16 @@ import (
 var upgrader = websocket.Upgrader{
 	ReadBufferSize:  1024,
 	WriteBufferSize: 1024,
-	// Reuse buffers to save memory
 	WriteBufferPool: &sync.Pool{},
 	CheckOrigin: func(r *http.Request) bool {
 		return true // CORS: allow all origins (for now)
 	},
 }
 
+// Hub manages active WebSocket connections
 type Hub struct {
 	storage storage.Storage
-	conns   map[string]*websocket.Conn // publicID -> conn
+	conns   map[string]*websocket.Conn
 	mu      sync.RWMutex
 }
 
@@ -55,37 +58,116 @@ func (h *Hub) GetConn(publicID string) *websocket.Conn {
 	return h.conns[publicID]
 }
 
-// WebSocketHandler upgrades HTTP to WebSocket and dispatches events
-func WebSocketHandler(hub *Hub, auth *controller.AuthController, call *controller.CallController, room *controller.RoomController, config *pkg.GlobalConfig) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		logger := config.Logger
+// safeConn wraps a websocket.Conn with a write mutex to prevent concurrent writes
+type safeConn struct {
+	conn    *websocket.Conn
+	writeMu sync.Mutex
+}
 
-		conn, err := upgrader.Upgrade(w, r, nil)
+func (s *safeConn) WriteJSON(v interface{}) error {
+	s.writeMu.Lock()
+	defer s.writeMu.Unlock()
+	return s.conn.WriteJSON(v)
+}
+
+func (s *safeConn) WriteMessage(msgType int, data []byte) error {
+	s.writeMu.Lock()
+	defer s.writeMu.Unlock()
+	return s.conn.WriteMessage(msgType, data)
+}
+
+func (s *safeConn) ReadJSON(v interface{}) error {
+	return s.conn.ReadJSON(v)
+}
+
+func (s *safeConn) SetReadDeadline(t time.Time) error {
+	return s.conn.SetReadDeadline(t)
+}
+
+func (s *safeConn) Close() error {
+	return s.conn.Close()
+}
+
+// atomicTime is a thread-safe time.Time using atomic operations
+type atomicTime struct {
+	v unsafe.Pointer
+}
+
+func newAtomicTime(t time.Time) *atomicTime {
+	a := &atomicTime{}
+	a.Store(t)
+	return a
+}
+
+func (a *atomicTime) Store(t time.Time) {
+	p := new(time.Time)
+	*p = t
+	atomic.StorePointer(&a.v, unsafe.Pointer(p))
+}
+
+func (a *atomicTime) Load() time.Time {
+	return *(*time.Time)(atomic.LoadPointer(&a.v))
+}
+
+// WebSocketHandler upgrades HTTP to WebSocket and dispatches events
+func WebSocketHandler(
+	hub *Hub,
+	auth *controller.AuthController,
+	call *controller.CallController,
+	room *controller.RoomController,
+	config *pkg.GlobalConfig,
+) http.HandlerFunc {
+	// Read env config once at startup, not per connection
+	idleTimeout := time.Duration(pkg.GetEnvInt("MAX_CONN_IDLE", 30)) * time.Minute
+
+	logger := *config.Logger
+
+	return func(w http.ResponseWriter, r *http.Request) {
+
+		rawConn, err := upgrader.Upgrade(w, r, nil)
 		if err != nil {
-			logger.Warn("WARN WebSocket upgrade failed", zap.Error(err))
+			logger.Warn("websocket upgrade failed", zap.Error(err))
 			return
 		}
+
+		// Wrap with write mutex for concurrent-safe writes
+		conn := &safeConn{conn: rawConn}
 		defer conn.Close()
 
-		ctx := context.Background()
+		// Context with cancellation — propagated to all handlers
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
 		var user *pkg.User
 
-		// Auto-close inactive connections after 30 minutes
-		idleTimeout := time.Duration(pkg.GetEnvInt("MAX_CONN_IDLE", 30)) * time.Minute
-		lastActive := time.Now()
+		// done channel — closed exactly once via sync.Once
 		done := make(chan struct{})
+		var closeOnce sync.Once
+		closeDone := func() {
+			closeOnce.Do(func() { close(done) })
+		}
 
-		// Watchdog goroutine
+		// Thread-safe last active timestamp
+		lastActive := newAtomicTime(time.Now())
+
+		// Watchdog goroutine — closes idle connections
 		go func() {
 			ticker := time.NewTicker(5 * time.Minute)
 			defer ticker.Stop()
 			for {
 				select {
 				case <-ticker.C:
-					if time.Since(lastActive) > idleTimeout {
-						conn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, "Connection closed due to inactivity"))
+					if time.Since(lastActive.Load()) > idleTimeout {
+						logger.Info("closing idle connection")
+						conn.WriteMessage(
+							websocket.CloseMessage,
+							websocket.FormatCloseMessage(
+								websocket.CloseNormalClosure,
+								"connection closed due to inactivity",
+							),
+						)
 						conn.Close()
-						close(done)
+						closeDone()
 						return
 					}
 				case <-done:
@@ -94,60 +176,100 @@ func WebSocketHandler(hub *Hub, auth *controller.AuthController, call *controlle
 			}
 		}()
 
+		// Main read loop
+		connection := conn.conn
+
+		fmt.Printf("\n[UserMemoeryID]: %p\n", &user)
+
 		for {
-			var msg map[string]interface{}
 			conn.SetReadDeadline(time.Now().Add(idleTimeout))
+
+			var msg map[string]interface{}
 			if err := conn.ReadJSON(&msg); err != nil {
 				break
 			}
-			lastActive = time.Now()
-			event, _ := msg["event"].(string)
+
+			lastActive.Store(time.Now())
+
+			// Validate message fields
+			event, ok := msg["event"].(string)
+			if !ok || event == "" {
+				conn.WriteJSON(map[string]string{"error": "missing event field"})
+				continue
+			}
 			data := msg["data"]
-			logger.Info("INFO Received WebSocket event - event=%s data=%v", zap.String("event", event), zap.Any("data", data))
+
+			// Guard non-auth events behind login check
+			if user == nil && event != "login" {
+				conn.WriteJSON(map[string]string{"error": "unauthorized"})
+				continue
+			}
+
 			switch event {
 			case "login":
-				u := auth.HandleLogin(ctx, conn, data)
+				u := auth.HandleLogin(ctx, connection, data)
 				switch v := u.(type) {
 				case pkg.User:
 					user = &v
-					hub.RegisterConn(user.PublicID, conn)
+					hub.RegisterConn(user.PublicID, connection)
+				default:
+					conn.WriteJSON(map[string]string{"error": "login failed"})
 				}
+
 			case "logout":
 				if user != nil {
-					auth.HandleLogout(ctx, conn, user)
+					auth.HandleLogout(user, ctx, connection)
 					hub.UnregisterConn(user.PublicID)
-					conn.Close()
-					close(done)
 					user = nil
 				}
-			case "online-users":
-				auth.HandleOnlineUsers(ctx, conn)
-			case "call-initiate":
-				call.HandleInitiate(ctx, conn, data, hub)
-			case "call-accept":
-				call.HandleAccept(ctx, conn, data, hub)
-			case "call-decline":
-				call.HandleDecline(ctx, conn, data, hub)
-			case "call-cancel":
-				call.HandleCancel(ctx, conn, data, hub)
-			case "call-end":
-				call.HandleEnd(ctx, conn, data, hub)
-			case "media-state":
-				call.HandleMediaState(ctx, conn, data, hub)
+
+			case "ping":
+				lastActive.Store(time.Now())
+				conn.WriteJSON(map[string]string{"event": "pong", "data": user.SocketID})
+
+			case "get-online-users":
+				auth.HandleOnlineUsers(user, ctx, connection)
+
+			// case "call-initiate":
+			// 	call.HandleInitiate(user, ctx, connection, data, hub)
+
+			// case "call-accept":
+			// 	call.HandleAccept(user, ctx, connection, data, hub)
+
+			// case "call-decline":
+			// 	call.HandleDecline(user, ctx, connection, data, hub)
+
+			// case "call-cancel":
+			// 	call.HandleCancel(user, ctx, connection, data, hub)
+
+			// case "call-end":
+			// 	call.HandleEnd(user, ctx, connection, data, hub)
+
+			// case "media-state":
+			// 	call.HandleMediaState(user, ctx, connection, data, hub)
+
 			case "room-join":
-				room.HandleJoin(ctx, conn, data, hub)
+				room.HandleJoin(user, ctx, connection, data, hub)
+
 			case "room-leave":
-				room.HandleLeave(ctx, conn, data, hub)
+				room.HandleLeave(user, ctx, connection, data, hub)
+
 			case "room-message":
-				room.HandleMessage(ctx, conn, data, hub)
+				room.HandleMessage(user, ctx, connection, data, hub)
+
 			default:
-				// Unknown event
+				logger.Warn("unknown event received", zap.String("event", event))
+				conn.WriteJSON(map[string]string{"error": "unknown event: " + event})
 			}
 		}
-		close(done)
+
+		// Connection dropped — clean up
+		closeDone()
+		cancel()
+
 		if user != nil {
 			hub.UnregisterConn(user.PublicID)
-			auth.HandleLogout(ctx, conn, user)
+			auth.HandleLogout(user, ctx, connection)
 			user = nil
 		}
 	}
