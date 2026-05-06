@@ -12,7 +12,7 @@ type GlobalConfig struct {
 type WebsocketConn struct {
 	UserID      string
 	SocketID    string
-	StartTime   string
+	StartTime   time.Time
 	Connenction *websocket.Conn
 }
 
