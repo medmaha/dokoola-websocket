@@ -15,3 +15,7 @@ type WebsocketConn struct {
 	StartTime   string
 	Connenction *websocket.Conn
 }
+
+type JSONConn interface {
+	WriteJSON(v interface{}) error
+}
