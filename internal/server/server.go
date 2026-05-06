@@ -28,8 +28,6 @@ func Run() {
 
 	// Storage: in-memory cache for single-instance deployment
 	store := storage.NewInMemoryStorage()
-	logger.Info("INFO Storage initialized", zap.String("storage_type", "InMemory"))
-
 	hub := NewHub(store)
 	auth := controller.NewAuthController(store, logger)
 	call := controller.NewCallController(store, logger)
