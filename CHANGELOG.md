@@ -1,3 +1,6 @@
+## [2026-05-07] - (3c423a0 - medmaha)
+Merge branch 'main' of https://github.com/medmaha/dokoola-websocket
+
 ## [2026-05-07] - (74f8f41 - medmaha)
 fix: update CMD instruction in Dockerfile to use the correct server path
 
