@@ -2,7 +2,6 @@ name: Websocket CI/CD
 
 permissions:
   contents: write
-  packages: write
 
 on:
   push:
@@ -38,8 +37,6 @@ jobs:
           SESSION_TTL: 86400
           RECOVERY_TTL: 120
           MAX_CONN_IDLE: 45
-          VM_USERNAME: opc
-          OCI_VM_IP: 89.168.58.175
 
   changelog:
     needs: test
