@@ -14,4 +14,4 @@ EXPOSE 8080
 # non-root
 USER 1000  
 
-CMD ["./server"]
+CMD ["./cmd/server"]
