@@ -1,3 +1,6 @@
+## [2026-05-07] - (046adff - medmaha)
+fix: update Dockerfile to build server with multi-line RUN command and correct CMD path
+
 ## [2026-05-07] - (3c423a0 - medmaha)
 Merge branch 'main' of https://github.com/medmaha/dokoola-websocket
 
