@@ -6,7 +6,6 @@ RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-w -s" -o server ./cmd/server.go
 FROM scratch
 WORKDIR /app
 COPY --from=builder /app/server /server
-COPY .env ./
 
 ENV GOGC 50
 
