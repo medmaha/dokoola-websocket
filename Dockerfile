@@ -1,9 +1,14 @@
 FROM golang:1.21-alpine as builder
 WORKDIR /app
+
+ENV CGO_ENABLED=0 GOOS=linux GOPROXY=https://proxy.golang.org,direct
+
+COPY go.mod go.sum ./
+RUN go mod download
+
 COPY . .
-RUN CGO_ENABLED=0 GOOS=linux \
-    go build -ldflags="-w -s" \
-    -o server ./cmd/server.go
+RUN go build -ldflags="-w -s" -o server ./cmd/server.go
+RUN chmod +x /app/server
 
 FROM scratch
 WORKDIR /app
@@ -13,7 +18,6 @@ ENV GOGC 50
 EXPOSE 8080
 
 # non-root
-USER 1000  
+USER 1000
 
-# FIX: Run it from the current directory
 CMD ["./server"]
