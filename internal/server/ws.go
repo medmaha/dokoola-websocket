@@ -226,23 +226,23 @@ func WebSocketHandler(
 			case "get-online-users":
 				auth.HandleOnlineUsers(user, ctx, ws)
 
-			// case "call-initiate":
-			// 	call.HandleInitiate(user, ctx, conn, data, hub)
+			case "call-initiate":
+				call.HandleInitiate(user, ctx, ws, data, hub)
 
-			// case "call-accept":
-			// 	call.HandleAccept(user, ctx, conn, data, hub)
+			case "call-accept":
+				call.HandleAccept(user, ctx, ws, data, hub)
 
-			// case "call-decline":
-			// 	call.HandleDecline(user, ctx, conn, data, hub)
+			case "call-decline":
+				call.HandleDecline(user, ctx, ws, data, hub)
 
-			// case "call-cancel":
-			// 	call.HandleCancel(user, ctx, conn, data, hub)
+			case "call-cancel":
+				call.HandleCancel(user, ctx, ws, data, hub)
 
-			// case "call-end":
-			// 	call.HandleEnd(user, ctx, conn, data, hub)
+			case "call-end":
+				call.HandleEnd(user, ctx, ws, data, hub)
 
-			// case "media-state":
-			// 	call.HandleMediaState(user, ctx, conn, data, hub)
+			case "media-state":
+				call.HandleMediaState(user, ctx, ws, data, hub)
 
 			case "room-join":
 				room.HandleJoin(user, ctx, ws, data, hub)
