@@ -14,10 +14,13 @@ type User struct {
 // Used for call events and state
 
 type CallData struct {
-	CallerID string `json:"caller_id"`
-	RemoteID string `json:"remote_id"`
-	CallType string `json:"call_type"` // "audio" or "video"
-	RoomID   string `json:"room_id"`
+	CallerID     string `json:"caller_id"`
+	RemoteID     string `json:"remote_id"`
+	CallType     string `json:"call_type"` // "audio" or "video"
+	RoomID       string `json:"room_id"`
+	Caller       User   `json:"caller"`
+	RemoteUser   User   `json:"remote_user"`
+	RemotePeerId string `json:"remotePeerId"` // add this
 }
 
 // Room represents a chat room
