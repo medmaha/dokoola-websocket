@@ -7,20 +7,18 @@ import (
 	"github.com/dokoola/websocket/internal/storage"
 	"github.com/dokoola/websocket/pkg"
 	"go.uber.org/zap"
-
-	"github.com/gorilla/websocket"
 )
 
 type CallController struct {
 	Storage storage.Storage
-	logger *zap.Logger
+	logger  *zap.Logger
 }
 
 func NewCallController(s storage.Storage, logger *zap.Logger) *CallController {
 	return &CallController{Storage: s, logger: logger}
 }
 
-func (c *CallController) HandleInitiate(ctx context.Context, conn *websocket.Conn, data interface{}, hub interface{GetConn(string) *websocket.Conn}) {
+func (c *CallController) HandleInitiate(user *pkg.User, ctx context.Context, conn pkg.JSONConn, data interface{}, hub interface{ GetConn(string) pkg.JSONConn }) {
 	b, _ := json.Marshal(data)
 	var call pkg.CallData
 	json.Unmarshal(b, &call)
@@ -35,7 +33,7 @@ func (c *CallController) HandleInitiate(ctx context.Context, conn *websocket.Con
 	conn.WriteJSON(map[string]interface{}{"event": "call-initiated", "data": call})
 }
 
-func (c *CallController) HandleAccept(ctx context.Context, conn *websocket.Conn, data interface{}, hub interface{GetConn(string) *websocket.Conn}) {
+func (c *CallController) HandleAccept(user *pkg.User, ctx context.Context, conn pkg.JSONConn, data interface{}, hub interface{ GetConn(string) pkg.JSONConn }) {
 	b, _ := json.Marshal(data)
 	var call pkg.CallData
 	json.Unmarshal(b, &call)
@@ -48,7 +46,7 @@ func (c *CallController) HandleAccept(ctx context.Context, conn *websocket.Conn,
 	conn.WriteJSON(map[string]interface{}{"event": "call-accepted", "data": call})
 }
 
-func (c *CallController) HandleDecline(ctx context.Context, conn *websocket.Conn, data interface{}, hub interface{GetConn(string) *websocket.Conn}) {
+func (c *CallController) HandleDecline(user *pkg.User, ctx context.Context, conn pkg.JSONConn, data interface{}, hub interface{ GetConn(string) pkg.JSONConn }) {
 	b, _ := json.Marshal(data)
 	var call pkg.CallData
 	json.Unmarshal(b, &call)
@@ -60,7 +58,7 @@ func (c *CallController) HandleDecline(ctx context.Context, conn *websocket.Conn
 	conn.WriteJSON(map[string]interface{}{"event": "call-declined", "data": call})
 }
 
-func (c *CallController) HandleCancel(ctx context.Context, conn *websocket.Conn, data interface{}, hub interface{GetConn(string) *websocket.Conn}) {
+func (c *CallController) HandleCancel(user *pkg.User, ctx context.Context, conn pkg.JSONConn, data interface{}, hub interface{ GetConn(string) pkg.JSONConn }) {
 	b, _ := json.Marshal(data)
 	var call pkg.CallData
 	json.Unmarshal(b, &call)
@@ -72,7 +70,7 @@ func (c *CallController) HandleCancel(ctx context.Context, conn *websocket.Conn,
 	conn.WriteJSON(map[string]interface{}{"event": "call-cancelled", "data": call})
 }
 
-func (c *CallController) HandleEnd(ctx context.Context, conn *websocket.Conn, data interface{}, hub interface{GetConn(string) *websocket.Conn}) {
+func (c *CallController) HandleEnd(user *pkg.User, ctx context.Context, conn pkg.JSONConn, data interface{}, hub interface{ GetConn(string) pkg.JSONConn }) {
 	b, _ := json.Marshal(data)
 	var call pkg.CallData
 	json.Unmarshal(b, &call)
@@ -84,7 +82,7 @@ func (c *CallController) HandleEnd(ctx context.Context, conn *websocket.Conn, da
 	conn.WriteJSON(map[string]interface{}{"event": "call-ended", "data": call})
 }
 
-func (c *CallController) HandleMediaState(ctx context.Context, conn *websocket.Conn, data interface{}, hub interface{GetConn(string) *websocket.Conn}) {
+func (c *CallController) HandleMediaState(user *pkg.User, ctx context.Context, conn pkg.JSONConn, data interface{}, hub interface{ GetConn(string) pkg.JSONConn }) {
 	b, _ := json.Marshal(data)
 	var call pkg.CallData
 	json.Unmarshal(b, &call)
