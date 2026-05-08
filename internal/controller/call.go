@@ -91,5 +91,4 @@ func (c *CallController) HandleMediaState(user *pkg.User, ctx context.Context, c
 		remoteConn.WriteJSON(map[string]interface{}{"event": "media-state", "data": call})
 	}
 	c.logger.Info("INFO Media state updated", zap.String("caller_id", call.CallerID), zap.String("remote_id", call.RemoteID))
-	conn.WriteJSON(map[string]interface{}{"event": "media-state", "data": call})
 }

@@ -226,19 +226,19 @@ func WebSocketHandler(
 			case "get-online-users":
 				auth.HandleOnlineUsers(user, ctx, ws)
 
-			case "call-initiate":
+			case "initiate-call":
 				call.HandleInitiate(user, ctx, ws, data, hub)
 
-			case "call-accept":
+			case "accept-call":
 				call.HandleAccept(user, ctx, ws, data, hub)
 
-			case "call-decline":
+			case "decline-call":
 				call.HandleDecline(user, ctx, ws, data, hub)
 
-			case "call-cancel":
+			case "cancel-call":
 				call.HandleCancel(user, ctx, ws, data, hub)
 
-			case "call-end":
+			case "end-end":
 				call.HandleEnd(user, ctx, ws, data, hub)
 
 			case "media-state":
