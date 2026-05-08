@@ -1,7 +1,9 @@
-FROM golang:1.21-alpine as builder
+FROM golang:1.24-alpine AS builder
 WORKDIR /app
 
-ENV CGO_ENABLED=0 GOOS=linux GOPROXY=https://proxy.golang.org,direct
+ENV CGO_ENABLED=0
+ENV GOOS=linux
+ENV GOPROXY=https://proxy.golang.org,direct
 
 COPY go.mod go.sum ./
 RUN go mod download
@@ -14,7 +16,7 @@ FROM scratch
 WORKDIR /app
 COPY --from=builder /app/server .
 
-ENV GOGC 50
+ENV GOGC=50
 EXPOSE 8080
 
 # non-root
