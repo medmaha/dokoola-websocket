@@ -1,3 +1,6 @@
+## [2026-05-08] - (cbc96f6 - medmaha)
+Merge branch 'main' of https://github.com/medmaha/dokoola-websocket
+
 ## [2026-05-08] - (801656c - medmaha)
 chore: update Go version in Dockerfile and improve environment variable formatting
 
