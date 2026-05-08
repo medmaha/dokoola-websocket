@@ -11,6 +11,8 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/joho/godotenv"
+
+	"github.com/rs/cors"
 )
 
 func Run() {
@@ -40,7 +42,12 @@ func Run() {
 		port = "8080"
 	}
 	logger.Info("INFO Server listening on port %s", zap.String("port", port))
-	err := http.ListenAndServe(":"+port, r)
+	handler := cors.New(cors.Options{
+		AllowedOrigins: []string{pkg.GetEnv("CORS_ORIGINS", "*")},
+		AllowedMethods: []string{"GET", "POST", "OPTIONS"},
+	}).Handler(r)
+
+	err := http.ListenAndServe(":"+port, handler)
 	if err != nil {
 		logger.Fatal("FATAL Server error", zap.Error(err))
 	}
