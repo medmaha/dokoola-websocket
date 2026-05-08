@@ -26,8 +26,8 @@ func Run() {
 		w.Write([]byte(`{"status":"ok"}`))
 	})
 
-	// Storage: in-memory cache for single-instance deployment
-	store := storage.NewInMemoryStorage()
+	// Storage: Redis if available, otherwise in-memory
+	store := storage.NewStorage()
 	hub := NewHub(store)
 	auth := controller.NewAuthController(store, logger)
 	call := controller.NewCallController(store, logger)
